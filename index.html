@@ -192,15 +192,9 @@
       background: #1e1e2e;
     }
     
-    /* Force the visualization canvas to the bottom */
+    /* Hide the visualization canvas */
     canvas#test-canvas {
-      position: relative !important;
-      width: 100% !important;
-      height: 200px !important;
-      top: auto !important;
-      left: auto !important;
-      flex-shrink: 0;
-      order: 999;
+      display: none !important;
     }
     
     /* Instructions overlay */
@@ -421,6 +415,7 @@ stack(
         canvas.style.top = 'auto';
         canvas.style.left = 'auto';
         canvas.style.pointerEvents = 'none';
+
       }
     }
     
