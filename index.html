@@ -34,11 +34,44 @@
       border-bottom: 2px solid #0f3460;
       flex-shrink: 0;
       z-index: 100;
+      gap: 1rem;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
     }
     
     .header h1 {
       font-size: 1.25rem;
       color: #e94560;
+      white-space: nowrap;
+    }
+    
+    .song-select {
+      background: #0f3460;
+      color: #fff;
+      border: 1px solid #533483;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      min-width: 150px;
+    }
+    
+    .song-select:hover {
+      border-color: #e94560;
+    }
+    
+    .song-select:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+    
+    .song-select option {
+      background: #16213e;
+      color: #fff;
     }
     
     .controls {
@@ -159,6 +192,17 @@
       background: #1e1e2e;
     }
     
+    /* Force the visualization canvas to the bottom */
+    canvas#test-canvas {
+      position: relative !important;
+      width: 100% !important;
+      height: 200px !important;
+      top: auto !important;
+      left: auto !important;
+      flex-shrink: 0;
+      order: 999;
+    }
+    
     /* Instructions overlay */
     .instructions {
       position: fixed;
@@ -191,7 +235,15 @@
 <body>
   <div id="app">
     <div class="header">
-      <h1>Strudel REPL</h1>
+      <div class="header-left">
+        <h1>Strudel REPL</h1>
+        <select id="songSelect" class="song-select">
+          <option value="demo">Demo Beat</option>
+          <option value="techno">Techno</option>
+          <option value="ambient">Ambient</option>
+          <option value="drumnbass">Drum & Bass</option>
+        </select>
+      </div>
       <div class="controls">
         <button id="playBtn" class="btn btn-play">Play Audio</button>
         <span id="recordingStatus" class="recording-status">Ready</span>
@@ -234,6 +286,74 @@ stack(
     // Initialize Strudel
     initStrudel();
     
+    // Song library
+    const songs = {
+      demo: `// Demo Beat
+// A simple beat with bass
+
+setcps(1)
+stack(
+  s("bd sd [~ bd] sd,hh*16"),
+  note("c3 eb3 g3 bb3").s("sawtooth").cutoff(800)
+)`,
+      
+      techno: `// Techno
+// Driving 4/4 kick with synth stabs
+
+setcps(1.2)
+stack(
+  s("bd*4"),
+  s("~ cp ~ cp"),
+  s("hh*8").gain(0.7),
+  note("c2 c2 g2 c2")
+    .s("sawtooth")
+    .cutoff(sine.range(400, 2000).slow(4))
+    .resonance(10)
+    .decay(0.1)
+    .sustain(0)
+)`,
+      
+      ambient: `// Ambient
+// Floating pads and gentle percussion
+
+setcps(0.6)
+stack(
+  s("~ ~ ~ ~"),
+  note("c4 eb4 g4 bb4 c5")
+    .slow(4)
+    .s("sine")
+    .attack(2)
+    .decay(1)
+    .sustain(0.8)
+    .release(2)
+    .gain(0.5)
+    .room(0.8),
+  s("~ ~ hh ~")
+    .slow(2)
+    .gain(0.3)
+    .delay(0.5)
+    .delaytime(0.375)
+)`,
+      
+      drumnbass: `// Drum & Bass
+// Fast breaks and sub bass
+
+setcps(1.75)
+stack(
+  s("bd ~ bd ~ bd bd ~ bd")
+    .gain(1.2),
+  s("~ sd ~ sd")
+    .gain(0.9),
+  s("hh*8")
+    .gain(0.6),
+  note("c2 ~ c2 ~ c2 c2 ~ c2")
+    .s("sawtooth")
+    .cutoff(200)
+    .resonance(5)
+    .gain(0.8)
+)`
+    };
+    
     // Get DOM elements
     const playBtn = document.getElementById('playBtn');
     const recordBtn = document.getElementById('recordBtn');
@@ -241,12 +361,14 @@ stack(
     const exportBtn = document.getElementById('exportBtn');
     const recordingStatus = document.getElementById('recordingStatus');
     const editor = document.getElementById('editor');
+    const songSelect = document.getElementById('songSelect');
     
     // Recording state
     let mediaRecorder = null;
     let audioChunks = [];
     let recordedBlob = null;
     let audioContext = null;
+    let currentEditor = null;
     
     // Initialize audio context
     async function initAudio() {
@@ -255,6 +377,51 @@ stack(
         await audioContext.resume();
       }
       return audioContext;
+    }
+    
+    // Get the current CodeMirror editor instance
+    function getEditorInstance() {
+      if (!currentEditor) {
+        // Try to find the editor in the strudel-editor
+        const editorDiv = editor.nextElementSibling;
+        if (editorDiv) {
+          // The StrudelMirror instance is stored on the editor
+          currentEditor = editor.editor;
+        }
+      }
+      return currentEditor;
+    }
+    
+    // Load a song into the editor
+    function loadSong(songKey) {
+      const code = songs[songKey];
+      if (code && editor) {
+        // Update the code attribute
+        editor.setAttribute('code', code);
+        
+        // If we have the editor instance, update it directly
+        if (editor.editor && editor.editor.setCode) {
+          editor.editor.setCode(code);
+        }
+      }
+    }
+    
+    // Handle song selection
+    songSelect.addEventListener('change', (e) => {
+      loadSong(e.target.value);
+    });
+    
+    // Fix canvas positioning - move it inside the editor container
+    function fixCanvasPosition() {
+      const canvas = document.getElementById('test-canvas');
+      if (canvas && canvas.style.position === 'fixed') {
+        canvas.style.position = 'relative';
+        canvas.style.height = '200px';
+        canvas.style.width = '100%';
+        canvas.style.top = 'auto';
+        canvas.style.left = 'auto';
+        canvas.style.pointerEvents = 'none';
+      }
     }
     
     // Play button
